@@ -26,7 +26,7 @@ FORCE           = os.getenv("FORCE", "0") == "1"
 SHARP_BOOK = "pinnacle"
 # Match this list to your Game-Line-Pinny-Devig KS books
 BOOKS = ["draftkings", "fanduel", "betmgm", "williamhill_us",
-         "fanatics", "espnbet", "betrivers"]
+         "fanatics", "espnbet", "betrivers", "novig"]
 MARKETS = "h2h,spreads,totals"
 
 CONFIRM_LEVELS = {"confirmed"}      # add "likely" to run earlier on strong reports
