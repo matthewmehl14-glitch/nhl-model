@@ -24,8 +24,6 @@ import nhl_model as M
 
 SEASONS = [int(s) for s in os.getenv("BT_SEASONS", "2025").split(",") if s.strip()]
 USE_ODDS = os.getenv("BT_ODDS", "0") == "1"
-SHOTS_URL = os.getenv("SHOTS_URL", "https://peter-tanner.com/moneypuck/downloads/shots_{season}.zip")
-CACHE = "bt_cache"
 ODDS_CACHE = "bt_odds_cache.json"
 UA = {"User-Agent": "Mozilla/5.0 (nhl-backtest)"}
 NHL_TEAMS = sorted(set(M.TEAMS.values()))
@@ -56,33 +54,8 @@ def fix(code): return M.MP_FIX.get(code, code)
 
 # ============================ DATA ============================
 def load_shots(season):
-    """-> {nhl_game_id: {h_xg,a_xg,h_g,a_g, goalies:{(side,id):[shots,xga,ga]}}}"""
-    os.makedirs(CACHE, exist_ok=True)
-    path = f"{CACHE}/shots_{season}.zip"
-    if not os.path.exists(path):
-        print(f"[data] downloading shots_{season}.zip ...")
-        r = requests.get(SHOTS_URL.format(season=season), headers=UA, timeout=600)
-        r.raise_for_status()
-        open(path, "wb").write(r.content)
-    z = zipfile.ZipFile(path)
-    name = next(n for n in z.namelist() if n.endswith(".csv"))
-    games = {}
-    with z.open(name) as fh:
-        for r in csv.DictReader(io.TextIOWrapper(fh, encoding="utf-8")):
-            if one(r.get("isPlayoffGame", "0")) or fl(r.get("period")) >= 5:
-                continue
-            gid = season * 1_000_000 + int(fl(r["game_id"]))
-            g = games.setdefault(gid, {"h_xg": 0.0, "a_xg": 0.0, "h_g": 0, "a_g": 0, "goalies": {}})
-            home = one(r["isHomeTeam"])
-            xg, goal = fl(r["xGoal"]), one(r["goal"])
-            s = "h" if home else "a"
-            g[s + "_xg"] += xg; g[s + "_g"] += goal
-            gk = int(fl(r.get("goalieIdForShot")))
-            if gk and not one(r.get("shotOnEmptyNet", "0")):
-                d = g["goalies"].setdefault(("a" if home else "h", gk), [0, 0.0, 0])
-                d[0] += 1; d[1] += xg; d[2] += goal
-    print(f"[data] shots {season}: {len(games)} games")
-    return games
+    """Same loader the live model uses (nhl_model.load_shots)."""
+    return M.load_shots(season)
 
 
 def load_schedule(season):
