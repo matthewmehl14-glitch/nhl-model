@@ -1,0 +1,38 @@
+name: NHL Model
+
+on:
+  workflow_dispatch:
+    inputs:
+      force:
+        description: "Ignore goalie gate (use projected starters)"
+        type: boolean
+        default: false
+
+permissions:
+  contents: write
+
+concurrency:
+  group: nhl-repo-writes
+  cancel-in-progress: false
+
+jobs:
+  run:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install -r requirements.txt
+      - name: Run model
+        env:
+          ODDS_API_KEY: ${{ secrets.ODDS_API_KEY }}
+          DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
+          FORCE: ${{ inputs.force && '1' || '0' }}
+        run: python nhl_model.py
+      - name: Commit state + log
+        run: |
+          git config user.name "github-actions"
+          git config user.email "github-actions@users.noreply.github.com"
+          for f in nhl_state.json nhl_plays_log.csv; do [ -f "$f" ] && git add "$f"; done
+          git diff --cached --quiet || (git commit -m "NHL model run" && git push)
