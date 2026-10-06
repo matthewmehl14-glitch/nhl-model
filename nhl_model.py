@@ -13,7 +13,8 @@ Flow (each run):
 
 Env vars: ODDS_API_KEY, DISCORD_WEBHOOK_URL, FORCE=1 (optional: ignore goalie gate, use projected)
 """
-import os, re, csv, io, json, math, unicodedata, datetime as dt
+import os, re, sys, csv, io, json, math, zipfile, unicodedata, datetime as dt
+from collections import defaultdict
 from zoneinfo import ZoneInfo
 import requests
 import numpy as np
@@ -166,66 +167,114 @@ def load_overrides():
         return {}
 
 
-# ============================ STATS (MoneyPuck) ============================
-def mp_csv(season, kind):
-    try:
-        txt = get(f"https://moneypuck.com/moneypuck/playerData/seasonSummary/{season}/regular/{kind}.csv").text
-        return [r for r in csv.DictReader(io.StringIO(txt)) if r.get("situation") == "all"]
-    except Exception as e:
-        print(f"[stats] MoneyPuck {season} {kind} unavailable: {e}")
-        return []
+# ============================ STATS (MoneyPuck shot files) ============================
+# Same source the backtest tunes on, so live ratings are built exactly like the tested ones.
+SHOTS_URL = os.getenv("SHOTS_URL", "https://peter-tanner.com/moneypuck/downloads/shots_{season}.zip")
+CACHE = "bt_cache"
 
 
-def f(r, k):
-    try: return float(r.get(k) or 0)
-    except ValueError: return 0.0
+def _one(v): return str(v).strip() in ("1", "1.0", "True", "true")
+def _fl(v):
+    try: return float(v)
+    except (TypeError, ValueError): return 0.0
 
 
-def build_team_ratings(season):
-    cur, prev = mp_csv(season, "teams"), mp_csv(season - 1, "teams")
+def load_shots(season, fresh=False, optional=False):
+    """-> {nhl_game_id: {h_code,a_code,h_xg,a_xg,h_g,a_g, goalies:{(side,id):[shots,xga,ga]}, gname:{id:name}}}
+    fresh=True re-downloads (in-progress season). optional=True returns {} if the file doesn't exist yet."""
+    os.makedirs(CACHE, exist_ok=True)
+    path = f"{CACHE}/shots_{season}.zip"
+    if fresh or not os.path.exists(path):
+        try:
+            r = requests.get(SHOTS_URL.format(season=season), headers=UA, timeout=600)
+            r.raise_for_status()
+            if r.content[:2] != b"PK":
+                raise ValueError(f"not a zip file (content-type {r.headers.get('content-type')})")
+            open(path, "wb").write(r.content)
+            print(f"[stats] downloaded shots_{season}.zip ({len(r.content) / 1e6:.0f} MB)")
+        except Exception as e:
+            if os.path.exists(path):
+                print(f"[stats] shots_{season} refresh failed ({e}); using cached copy")
+            elif optional:
+                print(f"[stats] shots_{season} not available yet ({e}); using prior season only")
+                return {}
+            else:
+                raise RuntimeError(f"Could not download shots_{season}.zip: {e}")
+    z = zipfile.ZipFile(path)
+    name = next(n for n in z.namelist() if n.endswith(".csv"))
+    games = {}
+    with z.open(name) as fh:
+        for r in csv.DictReader(io.TextIOWrapper(fh, encoding="utf-8")):
+            if _one(r.get("isPlayoffGame", "0")) or _fl(r.get("period")) >= 5:
+                continue
+            gid = season * 1_000_000 + int(_fl(r["game_id"]))
+            g = games.get(gid)
+            if g is None:
+                g = games[gid] = {"h_code": MP_FIX.get(r["homeTeamCode"], r["homeTeamCode"]),
+                                  "a_code": MP_FIX.get(r["awayTeamCode"], r["awayTeamCode"]),
+                                  "h_xg": 0.0, "a_xg": 0.0, "h_g": 0, "a_g": 0, "goalies": {}, "gname": {}}
+            home = _one(r["isHomeTeam"])
+            xg, goal = _fl(r["xGoal"]), _one(r["goal"])
+            sd = "h" if home else "a"
+            g[sd + "_xg"] += xg; g[sd + "_g"] += goal
+            gk = int(_fl(r.get("goalieIdForShot")))
+            if gk and not _one(r.get("shotOnEmptyNet", "0")):
+                d = g["goalies"].setdefault(("a" if home else "h", gk), [0, 0.0, 0])
+                d[0] += 1; d[1] += xg; d[2] += goal
+                g["gname"].setdefault(gk, r.get("goalieNameForShot", ""))
+    print(f"[stats] shots {season}: {len(games)} games")
+    return games
 
-    def per_game(rows):
-        out = {}
-        for r in rows:
-            gp = f(r, "games_played")
-            if gp <= 0: continue
-            ab = MP_FIX.get(r["team"], r["team"])
-            out[ab] = {"gp": gp,
-                       "off": XG_WEIGHT * f(r, "xGoalsFor") / gp + (1 - XG_WEIGHT) * f(r, "goalsFor") / gp,
-                       "def": f(r, "xGoalsAgainst") / gp,
-                       "gf": f(r, "goalsFor") / gp, "xgf": f(r, "xGoalsFor") / gp}
-        return out
 
-    c, p = per_game(cur), per_game(prev)
-    base = c if len(c) >= 30 else p
-    lg_off = np.mean([t["off"] for t in base.values()])
-    lg_def = np.mean([t["def"] for t in base.values()])
-    lg_goals = np.mean([t["gf"] for t in base.values()])
+def _season_totals(shots):
+    t = defaultdict(lambda: np.zeros(4))   # gp, xgf, gf, xga
+    gl = defaultdict(lambda: np.zeros(2))  # xga faced, gsax
+    for g in shots.values():
+        t[g["h_code"]] += [1, g["h_xg"], g["h_g"], g["a_xg"]]
+        t[g["a_code"]] += [1, g["a_xg"], g["a_g"], g["h_xg"]]
+        for (_, gk), (_, xga, ga) in g["goalies"].items():
+            nm = norm(g["gname"].get(gk, ""))
+            gl[nm if nm else f"id{gk}"] += [xga, xga - ga]
+    return t, gl
+
+
+def build_ratings(season):
+    """Team off/def ratings + goalie factors. Mirrors nhl_backtest.lambdas() exactly."""
+    pt, pgl = _season_totals(load_shots(season - 1))
+    ct, cgl = _season_totals(load_shots(season, fresh=True, optional=True))
+    if len(pt) < 30:
+        raise RuntimeError(f"Prior-season shot data looks wrong ({len(pt)} teams) - check SHOTS_URL")
+    xw, R, PG = XG_WEIGHT, PRIOR_REGRESS, PRIOR_GAMES
+    ptot = sum(pt.values())
+    p_lg = dict(xgf=ptot[1] / ptot[0], gf=ptot[2] / ptot[0], xga=ptot[3] / ptot[0])
+    ctot = sum(ct.values()) if ct else np.zeros(4)
+    if sum(1 for v in ct.values() if v[0] > 0) >= 30:
+        lg = dict(xgf=ctot[1] / ctot[0], gf=ctot[2] / ctot[0], xga=ctot[3] / ctot[0])
+    else:
+        lg = p_lg
+    lg_off, lg_def, lg_goals = xw * lg["xgf"] + (1 - xw) * lg["gf"], lg["xga"], lg["gf"]
 
     ratings = {}
-    for ab in set(c) | set(p) | set(TEAMS.values()):
-        po = p.get(ab, {}).get("off", lg_off) * (1 - PRIOR_REGRESS) + lg_off * PRIOR_REGRESS
-        pd_ = p.get(ab, {}).get("def", lg_def) * (1 - PRIOR_REGRESS) + lg_def * PRIOR_REGRESS
-        gp = c.get(ab, {}).get("gp", 0)
-        w = gp / (gp + PRIOR_GAMES)
-        off = w * c[ab]["off"] + (1 - w) * po if gp else po
-        dfn = w * c[ab]["def"] + (1 - w) * pd_ if gp else pd_
-        ratings[ab] = {"off": off / lg_off, "def": dfn / lg_def, "gp": gp}
-    return ratings, lg_goals
+    for ab in set(TEAMS.values()):
+        p = pt.get(ab)
+        pxgf, pgf, pxga = (p[1] / p[0], p[2] / p[0], p[3] / p[0]) if p is not None and p[0] else \
+                          (p_lg["xgf"], p_lg["gf"], p_lg["xga"])
+        po = (xw * pxgf + (1 - xw) * pgf) * (1 - R) + lg_off * R
+        pd_ = pxga * (1 - R) + lg_def * R
+        c = ct.get(ab, np.zeros(4)); gp = c[0]
+        w = gp / (gp + PG)
+        off = w * (xw * c[1] + (1 - xw) * c[2]) / gp + (1 - w) * po if gp else po
+        dfn = w * c[3] / gp + (1 - w) * pd_ if gp else pd_
+        ratings[ab] = {"off": off / lg_off, "def": dfn / lg_def, "gp": int(gp)}
 
-
-def build_goalie_ratings(season):
-    agg = {}
-    for rows, wt in ((mp_csv(season, "goalies"), 1.0), (mp_csv(season - 1, "goalies"), 0.6)):
-        for r in rows:
-            key = norm(r.get("name", ""))
-            a = agg.setdefault(key, {"xga": 0.0, "gsax": 0.0, "name": r.get("name")})
-            a["xga"] += wt * f(r, "xGoals")
-            a["gsax"] += wt * (f(r, "xGoals") - f(r, "goals"))
-    for a in agg.values():
-        rate = a["gsax"] / (a["xga"] + GOALIE_K)
-        a["factor"] = float(np.clip(1 - rate, 0.85, 1.12))  # multiplies OPPONENT scoring
-    return agg
+    goalies = {}
+    for n in set(cgl) | set(pgl):
+        c, p = cgl.get(n, np.zeros(2)), pgl.get(n, np.zeros(2))
+        xga, gsax = c[0] + 0.6 * p[0], c[1] + 0.6 * p[1]
+        goalies[n] = {"factor": float(np.clip(1 - gsax / (xga + GOALIE_K), 0.85, 1.12)) if xga > 0 else UNKNOWN_GOALIE}
+    print(f"[stats] {len(ratings)} teams rated (current-season games: {int(ctot[0] / 2)}), "
+          f"{len(goalies)} goalies, league {lg_goals:.2f} goals/team-game")
+    return ratings, float(lg_goals), goalies
 
 
 def goalie_factor(name, goalies):
@@ -392,6 +441,7 @@ def label(mkey, name, point, abbr):
 
 # ============================ MAIN ============================
 def main():
+    sys.stdout.reconfigure(line_buffering=True)  # keep log lines in order in GitHub Actions
     now = dt.datetime.now(dt.timezone.utc)
     today = now.astimezone(ET).date()
     ds = today.isoformat()
@@ -422,8 +472,11 @@ def main():
 
     # ---- only now pull stats + odds ----
     season = today.year if today.month >= 9 else today.year - 1
-    ratings, lg_goals = build_team_ratings(season)
-    goalie_db = build_goalie_ratings(season)
+    try:
+        ratings, lg_goals, goalie_db = build_ratings(season)
+    except Exception as e:
+        post_discord(f"⚠️ NHL model: stats load failed - {e}")
+        raise
     odds = fetch_odds()
     rng = np.random.default_rng()
     log = []
@@ -444,6 +497,8 @@ def main():
         fh_, fa_ = fatigue(th), fatigue(ta)
         lh *= (1 - fh_) * (1 + fa_)
         la *= (1 - fa_) * (1 + fh_)
+        if not (np.isfinite(lh) and np.isfinite(la) and lh > 0 and la > 0):
+            print(f"[skip] {a}@{h}: bad scoring rates ({lh}, {la})"); continue
         hg, ag = simulate(lh, la, rng)
         p_home = float(np.mean(hg > ag))
 
