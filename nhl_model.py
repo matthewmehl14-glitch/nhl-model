@@ -38,16 +38,16 @@ BANKROLL       = 2000
 KELLY_FRAC     = 0.25
 MAX_STAKE_PCT  = 0.03
 
-# Model knobs (calibrate with backtest later)
+# Model knobs (tuned by backtest: 2024-25 + 2025-26, 2,624 games)
 HFA            = 1.035  # home scoring multiplier (away gets 1/HFA)
-PRIOR_GAMES    = 25     # current-season GP needed to equal prior-season weight
+PRIOR_GAMES    = 10     # current-season GP needed to equal prior-season weight
 PRIOR_REGRESS  = 0.33   # regress prior season 1/3 to league mean (offseason churn)
-XG_WEIGHT      = 0.70   # offense = 70% xGF + 30% actual GF (finishing talent)
-GOALIE_K       = 120    # GSAx shrinkage (xGA faced)
+XG_WEIGHT      = 0.55   # offense = 55% xGF + 45% actual GF (finishing talent)
+GOALIE_K       = 350    # GSAx shrinkage (xGA faced)
 UNKNOWN_GOALIE = 1.03   # factor for goalie with no NHL data (call-up)
-B2B_PENALTY    = 0.035  # back-to-back: -3.5% own scoring, +3.5% allowed
-ENG_PROB       = 0.13   # P(empty-net goal | 1-goal lead after regulation)
-OT_GOAL_PROB   = 0.62   # P(OT decided before shootout)
+B2B_PENALTY    = 0.07   # back-to-back: -7% own scoring, +7% allowed
+ENG_PROB       = 0.08   # P(empty-net goal | 1-goal lead after regulation)
+OT_GOAL_PROB   = 0.672  # P(OT decided before shootout)
 
 ET = ZoneInfo("America/New_York")
 STATE_FILE, LOG_FILE, OVERRIDE_FILE = "nhl_state.json", "nhl_plays_log.csv", "goalies_override.json"
