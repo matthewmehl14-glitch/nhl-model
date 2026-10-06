@@ -7,7 +7,8 @@ Point-in-time replay of nhl_model.py on past season(s). No look-ahead:
   - Starter = goalie who faced the most shots for that team (stands in for "confirmed").
   - Data: MoneyPuck shot files (xG per shot) + NHL API finals (OT/SO settled like books).
 
-Tunes:  HFA, XG_WEIGHT, PRIOR_GAMES, PRIOR_REGRESS, GOALIE_K, B2B_PENALTY  -> ML log loss
+Tunes:  HFA, XG_WEIGHT, PRIOR_GAMES, PRIOR_REGRESS, GOALIE_K, B2B_PENALTY,
+        B2B_TRAVEL_K, TZ_K, DENSE_K (travel)  -> ML log loss
         ENG_PROB -> puck-line log loss;  OT_GOAL_PROB measured directly
 Optional BT_ODDS=1: Pinnacle pre-game ML from Odds API historical (~10 credits/day, cached)
         -> is the model adding info beyond Pinnacle? best MODEL_WEIGHT.
@@ -31,13 +32,18 @@ NHL_TEAMS = sorted(set(M.TEAMS.values()))
 KMAX = 16
 
 LIVE = dict(HFA=M.HFA, XG_WEIGHT=M.XG_WEIGHT, PRIOR_GAMES=M.PRIOR_GAMES, PRIOR_REGRESS=M.PRIOR_REGRESS,
-            GOALIE_K=M.GOALIE_K, B2B_PENALTY=M.B2B_PENALTY, ENG_PROB=M.ENG_PROB, OT_GOAL_PROB=M.OT_GOAL_PROB)
+            GOALIE_K=M.GOALIE_K, B2B_PENALTY=M.B2B_PENALTY, B2B_TRAVEL_K=M.B2B_TRAVEL_K, TZ_K=M.TZ_K,
+            DENSE_K=M.DENSE_K, ENG_PROB=M.ENG_PROB, OT_GOAL_PROB=M.OT_GOAL_PROB)
 GRID = dict(HFA=[1.0, 1.015, 1.025, 1.035, 1.05, 1.065],
             XG_WEIGHT=[0.4, 0.55, 0.7, 0.85, 1.0],
-            PRIOR_GAMES=[10, 15, 25, 40, 60],
+            PRIOR_GAMES=[3, 6, 10, 15, 25, 40],
             PRIOR_REGRESS=[0.15, 0.25, 0.33, 0.45, 0.6],
             GOALIE_K=[40, 80, 120, 200, 350, 600],
-            B2B_PENALTY=[0.0, 0.02, 0.035, 0.05, 0.07])
+            B2B_PENALTY=[0.0, 0.03, 0.05, 0.07, 0.09, 0.11],
+            B2B_TRAVEL_K=[0.0, 0.005, 0.01, 0.02, 0.03, 0.05],
+            TZ_K=[0.0, 0.005, 0.01, 0.015, 0.02, 0.03],
+            DENSE_K=[0.0, 0.01, 0.02, 0.03, 0.05])
+TRAVEL_KEYS = ("B2B_TRAVEL_K", "TZ_K", "DENSE_K")
 ENG_GRID = [0.0, 0.05, 0.08, 0.11, 0.13, 0.16, 0.2, 0.25]
 
 
@@ -121,14 +127,16 @@ def build_features(season):
 
     cur_t = defaultdict(lambda: np.zeros(4))
     cur_g = defaultdict(lambda: np.zeros(2))
-    last_played = {}
+    hist = defaultdict(list)  # team -> [(date, location)] from the full schedule
+    for s_ in sched.values():
+        hist[s_["h"]].append((s_["date"], s_["h"])); hist[s_["a"]].append((s_["date"], s_["h"]))
+    for v in hist.values(): v.sort()
     rows = []
     by_date = defaultdict(list)
     for gid, s in sched.items():
         if gid in shots: by_date[s["date"]].append(gid)
 
     for d in sorted(by_date):
-        yday = (dt.date.fromisoformat(d) - dt.timedelta(days=1)).isoformat()
         tot = sum(cur_t.values()) if cur_t else np.zeros(4)
         n_teams = sum(1 for v in cur_t.values() if v[0] > 0)
         for gid in by_date[d]:
@@ -147,7 +155,9 @@ def build_features(season):
                             f"{side}_pxgf": p["xgf"], f"{side}_pgf": p["gf"], f"{side}_pxga": p["xga"],
                             f"{side}_gid": gk, f"{side}_g_cxga": cg[0], f"{side}_g_cgsax": cg[1],
                             f"{side}_g_pxga": pg[0], f"{side}_g_pgsax": pg[1],
-                            f"{side}_b2b": int(last_played.get(team) == yday)})
+                            })
+                tv = M.travel_features([x for x in hist[team] if x[0] < d], s["h"], d)
+                row.update({f"{side}_{k}": v for k, v in tv.items()})
             rows.append(row)
         for gid in by_date[d]:  # update AFTER the whole date -> no same-day leakage
             s, g = sched[gid], shots[gid]
@@ -155,7 +165,6 @@ def build_features(season):
             cur_t[s["a"]] += [1, g["a_xg"], g["a_g"], g["h_xg"]]
             for (_, gk), (_, xga, ga) in g["goalies"].items():
                 cur_g[gk] = cur_g.get(gk, np.zeros(2)) + [xga, xga - ga]
-            last_played[s["h"]] = last_played[s["a"]] = d
     print(f"[features] {season}: {len(rows)} games")
     return rows
 
@@ -181,9 +190,13 @@ def lambdas(F, P):
         r[s + "_gk"] = np.where(xga > 0, np.clip(1 - gsax / (xga + P["GOALIE_K"]), 0.85, 1.12), M.UNKNOWN_GOALIE)
     lh = lg_goals * r["h_off"] * r["a_def"] * P["HFA"] * r["a_gk"]
     la = lg_goals * r["a_off"] * r["h_def"] / P["HFA"] * r["h_gk"]
-    b = P["B2B_PENALTY"]
-    lh = lh * np.where(F["h_b2b"] == 1, 1 - b, 1) * np.where(F["a_b2b"] == 1, 1 + b, 1)
-    la = la * np.where(F["a_b2b"] == 1, 1 - b, 1) * np.where(F["h_b2b"] == 1, 1 + b, 1)
+    fat = {}
+    for s in ("h", "a"):  # vectorized mirror of nhl_model.fatigue()
+        f = (P["B2B_PENALTY"] + P["B2B_TRAVEL_K"] * F[f"{s}_miles"] / 1000) * F[f"{s}_b2b"] \
+            + P["TZ_K"] * F[f"{s}_tz"] * (F[f"{s}_rest"] <= 2) + P["DENSE_K"] * F[f"{s}_dense"]
+        fat[s] = np.clip(f, 0, M.FATIGUE_CAP)
+    lh = lh * (1 - fat["h"]) * (1 + fat["a"])
+    la = la * (1 - fat["a"]) * (1 + fat["h"])
     return lh, la
 
 
@@ -278,6 +291,8 @@ def main():
                     best, best_ll, moved = trial, s, True
         if not moved: break
 
+    no_travel_ll = score(dict(best, **{k: 0.0 for k in TRAVEL_KEYS}))
+    travel_gain = no_travel_ll - best_ll
     lh, la = lambdas(F, best)
     p_ml = p_home_ml(lh, la, best["OT_GOAL_PROB"])
     margin = F["hs"] - F["as_"]; total = F["hs"] + F["as_"]
@@ -308,7 +323,8 @@ def main():
 
     res = dict(seasons=SEASONS, games=n, home_win_rate=float(y.mean()),
                ml=dict(baseline_ll=base_ll, live_params_ll=live_ll, tuned_ll=best_ll,
-                       brier=float(np.mean((p_ml - y) ** 2)), accuracy=float(np.mean((p_ml >= .5) == y))),
+                       brier=float(np.mean((p_ml - y) ** 2)), accuracy=float(np.mean((p_ml >= .5) == y)),
+                       no_travel_ll=no_travel_ll, travel_gain=travel_gain),
                puckline=dict(fav_cover_rate=float(y_pl.mean()), model_avg=float(p_pl.mean()),
                              ll=ll(p_pl, y_pl), eng_scores=eng_scores),
                totals=dict(actual_avg=float(total.mean()), model_avg=float(exp_total.mean()),
@@ -350,6 +366,7 @@ def main():
     L = [f"🧪 **NHL Backtest — seasons {', '.join(f'{s}-{str(s + 1)[2:]}' for s in SEASONS)}** ({n} games)", "```",
          f"ML log loss   baseline {ml['baseline_ll']:.4f} | live {ml['live_params_ll']:.4f} | tuned {ml['tuned_ll']:.4f}",
          f"ML Brier {ml['brier']:.4f}  acc {ml['accuracy']:.1%}  home win {res['home_win_rate']:.1%}",
+         f"Travel       without {no_travel_ll:.4f} | with {best_ll:.4f} | gain {travel_gain:.4f}",
          f"PL fav -1.5  actual {pl['fav_cover_rate']:.1%} | model {pl['model_avg']:.1%}",
          f"Totals avg   actual {t['actual_avg']:.2f} | model {t['model_avg']:.2f}",
          f"Over 5.5     actual {t['over55_actual']:.1%} | model {t['over55_model']:.1%}",
@@ -365,6 +382,8 @@ def main():
     L.append("```")
     if ml["tuned_ll"] >= ml["baseline_ll"]:
         L.append("⚠️ Model is not beating a home-rate baseline — do not bet model-tiered plays yet.")
+    if travel_gain < 0.0005:
+        L.append("ℹ️ Travel adds little/no predictive value here — the tuned travel values may be 0, which is fine.")
     if "pinnacle" in res and res["pinnacle"]["best_model_weight"] == 0:
         L.append("⚠️ Model adds no info beyond Pinnacle — set MODEL_WEIGHT=0, treat output as pure line shopping.")
     M.post_discord("\n".join(L))
