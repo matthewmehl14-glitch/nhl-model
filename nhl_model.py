@@ -46,6 +46,11 @@ XG_WEIGHT      = 0.55   # offense = 55% xGF + 45% actual GF (finishing talent)
 GOALIE_K       = 350    # GSAx shrinkage (xGA faced)
 UNKNOWN_GOALIE = 1.03   # factor for goalie with no NHL data (call-up)
 B2B_PENALTY    = 0.07   # back-to-back: -7% own scoring, +7% allowed
+# Travel (0 = off until the backtest measures them; paste tuned values here)
+B2B_TRAVEL_K   = 0.0    # extra B2B penalty per 1,000 miles flown since last game
+TZ_K           = 0.0    # penalty per time zone crossed (last game <= 2 days ago)
+DENSE_K        = 0.0    # penalty when tonight is the 3rd game in 4 nights
+FATIGUE_CAP    = 0.25   # max total fatigue penalty
 ENG_PROB       = 0.08   # P(empty-net goal | 1-goal lead after regulation)
 OT_GOAL_PROB   = 0.672  # P(OT decided before shootout)
 
@@ -232,6 +237,69 @@ def goalie_factor(name, goalies):
     return UNKNOWN_GOALIE, False
 
 
+# ============================ TRAVEL ============================
+# abbrev: (lat, lon, tz offset vs Eastern)
+ARENAS = {
+    "ANA": (33.808, -117.877, -3), "BOS": (42.366, -71.062, 0), "BUF": (42.875, -78.876, 0),
+    "CGY": (51.037, -114.052, -2), "CAR": (35.803, -78.722, 0), "CHI": (41.881, -87.674, -1),
+    "COL": (39.749, -105.008, -2), "CBJ": (39.969, -83.006, 0), "DAL": (32.790, -96.810, -1),
+    "DET": (42.341, -83.055, 0), "EDM": (53.547, -113.498, -2), "FLA": (26.158, -80.326, 0),
+    "LAK": (34.043, -118.267, -3), "MIN": (44.945, -93.101, -1), "MTL": (45.496, -73.569, 0),
+    "NSH": (36.159, -86.779, -1), "NJD": (40.734, -74.171, 0), "NYI": (40.712, -73.726, 0),
+    "NYR": (40.751, -73.993, 0), "OTT": (45.297, -75.927, 0), "PHI": (39.901, -75.172, 0),
+    "PIT": (40.439, -79.989, 0), "SJS": (37.333, -121.901, -3), "SEA": (47.622, -122.354, -3),
+    "STL": (38.627, -90.203, -1), "TBL": (27.943, -82.452, 0), "TOR": (43.643, -79.379, 0),
+    "UTA": (40.768, -111.901, -2), "VAN": (49.278, -123.109, -3), "VGK": (36.103, -115.178, -3),
+    "WSH": (38.898, -77.021, 0), "WPG": (49.893, -97.144, -1),
+}
+NO_TRAVEL = dict(b2b=0, miles=0.0, tz=0, rest=9, dense=0)
+
+
+def miles_between(a, b):
+    if a not in ARENAS or b not in ARENAS or a == b: return 0.0
+    la1, lo1, _ = ARENAS[a]; la2, lo2, _ = ARENAS[b]
+    p1, p2, dl = math.radians(la1), math.radians(la2), math.radians(lo2 - lo1)
+    c = math.sin(p1) * math.sin(p2) + math.cos(p1) * math.cos(p2) * math.cos(dl)
+    return 3958.8 * math.acos(max(-1.0, min(1.0, c)))
+
+
+def travel_features(past, loc, date_str):
+    """past = sorted [(date, location_abbrev)] of the team's earlier games this season;
+    loc = tonight's location (home team abbrev). Shared by live model and backtest."""
+    if not past: return dict(NO_TRAVEL)
+    d = dt.date.fromisoformat(date_str)
+    last_d, last_loc = past[-1]
+    rest = (d - dt.date.fromisoformat(last_d)).days
+    tz = abs(ARENAS[last_loc][2] - ARENAS[loc][2]) if last_loc in ARENAS and loc in ARENAS else 0
+    recent = sum(1 for x, _ in past[-3:] if 1 <= (d - dt.date.fromisoformat(x)).days <= 3)
+    return dict(b2b=int(rest == 1), miles=miles_between(last_loc, loc), tz=tz, rest=rest, dense=int(recent >= 2))
+
+
+def fatigue(t):
+    f = (B2B_PENALTY + B2B_TRAVEL_K * t["miles"] / 1000) * t["b2b"] \
+        + TZ_K * t["tz"] * (t["rest"] <= 2) + DENSE_K * t["dense"]
+    return min(max(f, 0.0), FATIGUE_CAP)
+
+
+def team_travel(team, loc, today, season):
+    try:
+        games = get(f"https://api-web.nhle.com/v1/club-schedule-season/{team}/{season}{season + 1}").json().get("games", [])
+    except Exception as e:
+        print(f"[travel] {team} schedule failed: {e}"); return dict(NO_TRAVEL)
+    past = sorted((g["gameDate"], g["homeTeam"]["abbrev"]) for g in games
+                  if g.get("gameType") in (2, 3) and g["gameDate"] < today.isoformat())
+    return travel_features(past, loc, today.isoformat())
+
+
+def travel_note(team, t):
+    bits = []
+    if t["b2b"]: bits.append("B2B")
+    if t["dense"]: bits.append("3-in-4")
+    if t["miles"] >= 500 and t["rest"] <= 2: bits.append(f"{t['miles']:,.0f} mi")
+    if t["tz"] and t["rest"] <= 2: bits.append(f"{t['tz']} TZ")
+    return f"{team}: {', '.join(bits)}" if bits else ""
+
+
 # ============================ SCHEDULE ============================
 def nhl_games(date_str):
     data = get(f"https://api-web.nhle.com/v1/schedule/{date_str}").json()
@@ -239,13 +307,6 @@ def nhl_games(date_str):
         if day.get("date") == date_str:
             return [g for g in day.get("games", []) if g.get("gameType") in (2, 3)]
     return []
-
-
-def teams_played_on(date_str):
-    try:
-        return {t for g in nhl_games(date_str) for t in (g["homeTeam"]["abbrev"], g["awayTeam"]["abbrev"])}
-    except Exception:
-        return set()
 
 
 # ============================ SIMULATION ============================
@@ -363,7 +424,6 @@ def main():
     season = today.year if today.month >= 9 else today.year - 1
     ratings, lg_goals = build_team_ratings(season)
     goalie_db = build_goalie_ratings(season)
-    b2b = teams_played_on((today - dt.timedelta(days=1)).isoformat())
     odds = fetch_odds()
     rng = np.random.default_rng()
     log = []
@@ -380,8 +440,10 @@ def main():
         rh, ra = ratings[h], ratings[a]
         lh = lg_goals * rh["off"] * ra["def"] * HFA * fa
         la = lg_goals * ra["off"] * rh["def"] / HFA * fh
-        if h in b2b: lh *= 1 - B2B_PENALTY; la *= 1 + B2B_PENALTY
-        if a in b2b: la *= 1 - B2B_PENALTY; lh *= 1 + B2B_PENALTY
+        th, ta = team_travel(h, h, today, season), team_travel(a, h, today, season)
+        fh_, fa_ = fatigue(th), fatigue(ta)
+        lh *= (1 - fh_) * (1 + fa_)
+        la *= (1 - fa_) * (1 + fh_)
         hg, ag = simulate(lh, la, rng)
         p_home = float(np.mean(hg > ag))
 
@@ -424,13 +486,14 @@ def main():
                  f"🥅 {ga['goalie']} vs {gh['goalie']} {gtag}" + ("" if kh and ka else " (⚠️ goalie w/ no data)"),
                  f"📊 Model: {h} {lh:.2f} – {a} {la:.2f} | {h} {p_home:.1%} ({p_to_am(p_home):+d})",
                  f"⚖️ Pinny fair: {h} {p_to_am(hf):+d} ({hf:.1%})" if hf else "⚖️ Pinny ML n/a"]
-        if h in b2b or a in b2b:
-            lines.append(f"😴 B2B: {', '.join(t for t in (h, a) if t in b2b)}")
+        notes = [n for n in (travel_note(a, ta), travel_note(h, th)) if n]
+        if notes:
+            lines.append("✈️ " + " | ".join(notes))
         if best:
             lines.append("```")
             for p in best[:8]:
                 st = f"${p['stake']:.0f}" if p["stake"] else "—"
-                lines.append(f"{p['tier']:<12}{p['lbl']:<12}{p['price']:+d} {p['book'][:10]:<10} "
+                lines.append(f"{p['tier']:<13}{p['lbl']:<12}{p['price']:+d} {p['book'][:10]:<10} "
                              f"fair {p['fair']:+d} | EV {p['pure']:+.1%}/{p['bev']:+.1%} | {st}")
             lines.append("```")
         else:
