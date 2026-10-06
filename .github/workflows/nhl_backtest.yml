@@ -1,0 +1,49 @@
+name: NHL Backtest
+
+on:
+  workflow_dispatch:
+    inputs:
+      seasons:
+        description: "Season start years, comma list (2025 = 2025-26)"
+        type: string
+        default: "2025"
+      use_odds:
+        description: "Pull Pinnacle historical ML (~10 Odds API credits per game day, cached after first run)"
+        type: boolean
+        default: false
+
+permissions:
+  contents: write
+
+concurrency:
+  group: nhl-repo-writes
+  cancel-in-progress: false
+
+jobs:
+  backtest:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install -r requirements.txt
+      - name: Cache MoneyPuck shot files
+        uses: actions/cache@v4
+        with:
+          path: bt_cache
+          key: moneypuck-shots-${{ inputs.seasons }}
+      - name: Run backtest
+        env:
+          BT_SEASONS: ${{ inputs.seasons }}
+          BT_ODDS: ${{ inputs.use_odds && '1' || '0' }}
+          ODDS_API_KEY: ${{ secrets.ODDS_API_KEY }}
+          DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
+        run: python nhl_backtest.py
+      - name: Commit results
+        run: |
+          git config user.name "github-actions"
+          git config user.email "github-actions@users.noreply.github.com"
+          for f in backtest_results.json backtest_games.csv bt_odds_cache.json; do [ -f "$f" ] && git add "$f"; done
+          git diff --cached --quiet || (git commit -m "NHL backtest run" && git push)
