@@ -1,19 +1,19 @@
-date,game_id,matchup,tier,bet,market,side,point,book,price,fair_am,pinny_p,model_p,ev_pure,ev_blend,stake,home_goalie,away_goalie,result
-2026-10-06,2026020044,NSH@TOR,🟢 B,NSH +1.5,spreads,NSH,1.5,Novig,-178,-179,0.641,0.7158,0.0011,0.0362,32.21,Anthony Stolarz,Juuse Saros,
-2026-10-06,2026020048,NYI@NYR,⚪ match,NYI ML,h2h,NYI,,theScore Bet,145,143,0.4109,0.4192,0.0067,0.0128,0,Igor Shesterkin,Semyon Varlamov,
-2026-10-06,2026020048,NYI@NYR,⚪ match,NYI +1.5,spreads,NYI,1.5,Novig,-182,-188,0.6532,0.6541,0.012,0.0124,0,Igor Shesterkin,Semyon Varlamov,
-2026-10-06,2026020048,NYI@NYR,⚪ price-only,Under 5.5,totals,Under,5.5,Novig,113,110,0.4752,0.4079,0.0121,-0.0308,0,Igor Shesterkin,Semyon Varlamov,
-2026-10-06,2026020052,FLA@LAK,🟢 B,LAK +1.5,spreads,LAK,1.5,Novig,-233,-242,0.7078,0.784,0.0116,0.0443,51.56,Darcy Kuemper,Jacob Markstrom,
-2026-10-06,2026020052,FLA@LAK,⚪ price-only,FLA ML,h2h,FLA,,Novig,-108,-108,0.5203,0.4215,0.002,-0.055,0,Darcy Kuemper,Jacob Markstrom,
-2026-10-06,2026020045,CAR@MTL,🟡 C,MTL +1.5,spreads,MTL,1.5,Novig,-212,-213,0.681,0.7168,0.0022,0.018,19.06,Jakub Dobes,Brandon Bussi,
-2026-10-06,2026020045,CAR@MTL,⚪ price-only,CAR ML,h2h,CAR,,Novig,-122,-123,0.5518,0.5041,0.0041,-0.0219,0,Jakub Dobes,Brandon Bussi,
-2026-10-06,2026020046,OTT@DET,⚪ price-only,DET ML,h2h,DET,,Novig,-115,-116,0.5371,0.5232,0.0042,-0.0037,0,John Gibson,Samuel Ersson,
-2026-10-06,2026020047,UTA@NJD,⚪ price-only,NJD ML,h2h,NJD,,Novig,-111,-116,0.5361,0.498,0.019,-0.0027,0,Jake Allen,Karel Vejmelka,
-2026-10-06,2026020047,UTA@NJD,⚪ price-only,Over 6.5,totals,Over,6.5,Novig,115,112,0.4706,0.4451,0.0119,-0.0046,0,Jake Allen,Karel Vejmelka,
-2026-10-06,2026020049,MIN@BUF,🟡 C,BUF +1.5,spreads,BUF,1.5,Novig,-233,-248,0.713,0.7299,0.0191,0.0263,30.65,Colten Ellis,Jesper Wallstedt,
-2026-10-06,2026020049,MIN@BUF,⚪ match,BUF ML,h2h,BUF,,Novig,104,103,0.4928,0.503,0.0053,0.0115,0,Colten Ellis,Jesper Wallstedt,
-2026-10-06,2026020049,MIN@BUF,⚪ price-only,Over 6.5,totals,Over,6.5,Novig,111,108,0.4798,0.4634,0.0124,0.002,0,Colten Ellis,Jesper Wallstedt,
-2026-10-06,2026020050,STL@CHI,⚪ match,CHI +1.5,spreads,CHI,1.5,Novig,-194,-199,0.6651,0.666,0.0079,0.0083,0,Spencer Knight,Joel Hofer,
-2026-10-06,2026020050,STL@CHI,⚪ match,STL ML,h2h,STL,,Novig,-135,-135,0.575,0.5787,0.0009,0.0028,0,Spencer Knight,Joel Hofer,
-2026-10-06,2026020051,VGK@SEA,🟡 C,SEA +1.5,spreads,SEA,1.5,Novig,-163,-166,0.6238,0.6473,0.0065,0.0179,14.61,Joey Daccord,Adin Hill,
-2026-10-06,2026020051,VGK@SEA,⚪ price-only,VGK ML,h2h,VGK,,Novig,-156,-157,0.6102,0.5924,0.0014,-0.0074,0,Joey Daccord,Adin Hill,
+date,game_id,matchup,tier,bet,market,side,point,book,price,fair_am,pinny_p,model_p,ev_pure,ev_blend,stake,home_goalie,away_goalie,result,units,stake_profit
+2026-10-06,2026020044,NSH@TOR,🟢 B,NSH +1.5,spreads,NSH,1.5,Novig,-178,-179,0.641,0.7158,0.0011,0.0362,32.21,Anthony Stolarz,Juuse Saros,W,0.562,18.10
+2026-10-06,2026020048,NYI@NYR,⚪ match,NYI ML,h2h,NYI,,theScore Bet,145,143,0.4109,0.4192,0.0067,0.0128,0,Igor Shesterkin,Semyon Varlamov,L,-1.000,-0.00
+2026-10-06,2026020048,NYI@NYR,⚪ match,NYI +1.5,spreads,NYI,1.5,Novig,-182,-188,0.6532,0.6541,0.012,0.0124,0,Igor Shesterkin,Semyon Varlamov,L,-1.000,-0.00
+2026-10-06,2026020048,NYI@NYR,⚪ price-only,Under 5.5,totals,Under,5.5,Novig,113,110,0.4752,0.4079,0.0121,-0.0308,0,Igor Shesterkin,Semyon Varlamov,L,-1.000,-0.00
+2026-10-06,2026020052,FLA@LAK,🟢 B,LAK +1.5,spreads,LAK,1.5,Novig,-233,-242,0.7078,0.784,0.0116,0.0443,51.56,Darcy Kuemper,Jacob Markstrom,W,0.429,22.13
+2026-10-06,2026020052,FLA@LAK,⚪ price-only,FLA ML,h2h,FLA,,Novig,-108,-108,0.5203,0.4215,0.002,-0.055,0,Darcy Kuemper,Jacob Markstrom,W,0.926,0.00
+2026-10-06,2026020045,CAR@MTL,🟡 C,MTL +1.5,spreads,MTL,1.5,Novig,-212,-213,0.681,0.7168,0.0022,0.018,19.06,Jakub Dobes,Brandon Bussi,L,-1.000,-19.06
+2026-10-06,2026020045,CAR@MTL,⚪ price-only,CAR ML,h2h,CAR,,Novig,-122,-123,0.5518,0.5041,0.0041,-0.0219,0,Jakub Dobes,Brandon Bussi,W,0.820,0.00
+2026-10-06,2026020046,OTT@DET,⚪ price-only,DET ML,h2h,DET,,Novig,-115,-116,0.5371,0.5232,0.0042,-0.0037,0,John Gibson,Samuel Ersson,W,0.870,0.00
+2026-10-06,2026020047,UTA@NJD,⚪ price-only,NJD ML,h2h,NJD,,Novig,-111,-116,0.5361,0.498,0.019,-0.0027,0,Jake Allen,Karel Vejmelka,L,-1.000,-0.00
+2026-10-06,2026020047,UTA@NJD,⚪ price-only,Over 6.5,totals,Over,6.5,Novig,115,112,0.4706,0.4451,0.0119,-0.0046,0,Jake Allen,Karel Vejmelka,W,1.150,0.00
+2026-10-06,2026020049,MIN@BUF,🟡 C,BUF +1.5,spreads,BUF,1.5,Novig,-233,-248,0.713,0.7299,0.0191,0.0263,30.65,Colten Ellis,Jesper Wallstedt,W,0.429,13.15
+2026-10-06,2026020049,MIN@BUF,⚪ match,BUF ML,h2h,BUF,,Novig,104,103,0.4928,0.503,0.0053,0.0115,0,Colten Ellis,Jesper Wallstedt,W,1.040,0.00
+2026-10-06,2026020049,MIN@BUF,⚪ price-only,Over 6.5,totals,Over,6.5,Novig,111,108,0.4798,0.4634,0.0124,0.002,0,Colten Ellis,Jesper Wallstedt,L,-1.000,-0.00
+2026-10-06,2026020050,STL@CHI,⚪ match,CHI +1.5,spreads,CHI,1.5,Novig,-194,-199,0.6651,0.666,0.0079,0.0083,0,Spencer Knight,Joel Hofer,W,0.515,0.00
+2026-10-06,2026020050,STL@CHI,⚪ match,STL ML,h2h,STL,,Novig,-135,-135,0.575,0.5787,0.0009,0.0028,0,Spencer Knight,Joel Hofer,L,-1.000,-0.00
+2026-10-06,2026020051,VGK@SEA,🟡 C,SEA +1.5,spreads,SEA,1.5,Novig,-163,-166,0.6238,0.6473,0.0065,0.0179,14.61,Joey Daccord,Adin Hill,L,-1.000,-14.61
+2026-10-06,2026020051,VGK@SEA,⚪ price-only,VGK ML,h2h,VGK,,Novig,-156,-157,0.6102,0.5924,0.0014,-0.0074,0,Joey Daccord,Adin Hill,W,0.641,0.00
