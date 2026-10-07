@@ -21,3 +21,4 @@ date,game_id,matchup,tier,bet,market,side,point,book,price,fair_am,pinny_p,model
 2026-10-07,2026020053,PIT@WSH,⚪ price-only,WSH ML,h2h,WSH,,Novig,-147,-150,0.6008,0.4718,0.0095,-0.0555,0,Logan Thompson,Arturs Silovs,
 2026-10-07,2026020055,EDM@ANA,🟡 C,EDM ML,h2h,EDM,,Novig,-122,-122,0.5498,0.5809,0.0004,0.0174,10.62,Lukas Dostal,Devon Levi,
 2026-10-07,2026020055,EDM@ANA,⚪ price-only,ANA +1.5,spreads,ANA,1.5,Novig,-194,-201,0.6673,0.6366,0.0113,-0.0027,0,Lukas Dostal,Devon Levi,
+2026-10-07,2026020054,COL@WPG,⚪ match,COL ML,h2h,COL,,Novig,-178,-181,0.6441,0.6453,0.006,0.0065,0,Stuart Skinner,Mackenzie Blackwood,
