@@ -43,3 +43,6 @@ date,game_id,matchup,tier,bet,market,side,point,book,price,fair_am,pinny_p,model
 2026-10-09,2026020069,ANA@WPG,🟡 C,Over 6.5,totals,Over,6.5,Novig,106,105,0.4881,0.5091,0.0054,0.0184,8.66,Clay Stevenson,Lukas Dostal,L,-1.000,-8.66
 2026-10-09,2026020069,ANA@WPG,⚪ match,ANA +1.5,spreads,ANA,1.5,Novig,-228,-228,0.6954,0.7094,0.0005,0.0065,0,Clay Stevenson,Lukas Dostal,W,0.439,0.00
 2026-10-09,2026020069,ANA@WPG,⚪ price-only,WPG ML,h2h,WPG,,Novig,-113,-113,0.5305,0.5114,0.0,-0.0108,0,Clay Stevenson,Lukas Dostal,L,-1.000,-0.00
+2026-10-11,2026020084,SEA@WSH,⚪ match,Over 6.5,totals,Over,6.5,Novig,108,107,0.4822,0.4862,0.0029,0.0054,0,Logan Thompson,Philipp Grubauer,
+2026-10-11,2026020086,CAR@PHI,🟢 B,CAR ML,h2h,CAR,,Novig,-194,-196,0.662,0.7311,0.0032,0.0346,33.57,Joseph Woll,Pyotr Kochetkov,
+2026-10-11,2026020086,CAR@PHI,⚪ price-only,PHI +1.5,spreads,PHI,1.5,Novig,-135,-140,0.584,0.5101,0.0166,-0.022,0,Joseph Woll,Pyotr Kochetkov,
