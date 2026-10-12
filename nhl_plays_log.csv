@@ -46,3 +46,6 @@ date,game_id,matchup,tier,bet,market,side,point,book,price,fair_am,pinny_p,model
 2026-10-11,2026020084,SEA@WSH,⚪ match,Over 6.5,totals,Over,6.5,Novig,108,107,0.4822,0.4862,0.0029,0.0054,0,Logan Thompson,Philipp Grubauer,W,1.080,0.00
 2026-10-11,2026020086,CAR@PHI,🟢 B,CAR ML,h2h,CAR,,Novig,-194,-196,0.662,0.7311,0.0032,0.0346,33.57,Joseph Woll,Pyotr Kochetkov,W,0.515,17.30
 2026-10-11,2026020086,CAR@PHI,⚪ price-only,PHI +1.5,spreads,PHI,1.5,Novig,-135,-140,0.584,0.5101,0.0166,-0.022,0,Joseph Woll,Pyotr Kochetkov,L,-1.000,-0.00
+2026-10-12,2026020088,OTT@NJD,🟡 C,OTT +1.5,spreads,OTT,1.5,Novig,-223,-234,0.7006,0.7255,0.0148,0.0256,28.5,Nico Daws,Linus Ullmark,
+2026-10-12,2026020089,VGK@MIN,🟢 B,VGK ML,h2h,VGK,,Novig,-102,-104,0.5096,0.5513,0.0093,0.034,17.34,Jesper Wallstedt,Carter Hart,
+2026-10-12,2026020089,VGK@MIN,⚪ price-only,MIN +1.5,spreads,MIN,1.5,Novig,-251,-255,0.7181,0.6865,0.0042,-0.0091,0,Jesper Wallstedt,Carter Hart,
