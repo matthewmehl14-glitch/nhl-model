@@ -91,3 +91,7 @@ date,game_id,matchup,tier,bet,market,side,point,book,price,fair_am,pinny_p,model
 2026-10-15,2026020116,STL@MIN,🟡 C,STL +1.5,spreads,STL,1.5,Novig,-194,-201,0.6673,0.6937,0.0113,0.0233,22.62,Jesper Wallstedt,Joel Hofer,W,0.515,11.66
 2026-10-15,2026020116,STL@MIN,⚪ price-only,MIN ML,h2h,MIN,,Novig,-130,-131,0.5666,0.5423,0.0024,-0.0105,0,Jesper Wallstedt,Joel Hofer,W,0.769,0.00
 2026-10-15,2026020118,CGY@VGK,⚪ price-only,Over 6.5,totals,Over,6.5,Novig,113,112,0.4706,0.4249,0.0025,-0.0267,0,Carter Hart,Dustin Wolf,W,1.130,0.00
+2026-10-16,2026020119,PIT@COL,⚪ match,COL -1.5,spreads,COL,-1.5,Novig,130,130,0.4353,0.4421,0.0013,0.006,0,Mackenzie Blackwood,Arturs Silovs,
+2026-10-16,2026020120,BOS@ANA,🟢 B,Over 6.5,totals,Over,6.5,BetRivers,102,101,0.4976,0.5398,0.0052,0.0307,15.07,Lukas Dostal,Michael DiPietro,
+2026-10-16,2026020120,BOS@ANA,⚪ match,ANA +1.5,spreads,ANA,1.5,Novig,-245,-247,0.7122,0.7265,0.0029,0.0089,0,Lukas Dostal,Michael DiPietro,
+2026-10-16,2026020120,BOS@ANA,⚪ price-only,BOS ML,h2h,BOS,,Novig,-102,-102,0.506,0.4798,0.0021,-0.0135,0,Lukas Dostal,Michael DiPietro,
