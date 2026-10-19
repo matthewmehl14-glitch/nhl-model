@@ -122,3 +122,5 @@ date,game_id,matchup,tier,bet,market,side,point,book,price,fair_am,pinny_p,model
 2026-10-18,2026020135,CBJ@MIN,⚪ price-only,CBJ +1.5,spreads,CBJ,1.5,Novig,-144,-145,0.5926,0.5319,0.0041,-0.0267,0,Jesper Wallstedt,Cam Talbot,W,0.694,0.00
 2026-10-18,2026020136,CAR@CGY,⚪ price-only,CAR ML,h2h,CAR,,Novig,-203,-204,0.6716,0.6299,0.0024,-0.0163,0,Devin Cooley,Brandon Bussi,L,-1.000,-0.00
 2026-10-18,2026020136,CAR@CGY,⚪ price-only,CAR -1.5,spreads,CAR,-1.5,Novig,127,126,0.4432,0.3859,0.006,-0.033,0,Devin Cooley,Brandon Bussi,L,-1.000,-0.00
+2026-10-19,2026020138,COL@PHI,🟡 C,COL ML,h2h,COL,,Novig,-223,-225,0.6923,0.7478,0.0027,0.0269,29.94,Joseph Woll,Mackenzie Blackwood,
+2026-10-19,2026020140,PIT@UTA,⚪ price-only,Over 6.5,totals,Over,6.5,FanDuel,-124,-126,0.5568,0.5284,0.0059,-0.0095,0,Sebastian Cossa,Arturs Silovs,
